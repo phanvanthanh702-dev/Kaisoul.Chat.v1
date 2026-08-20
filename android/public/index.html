@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🐬 KAISOUL CHAT - Nền tảng nhắn tin Gen Z</title>
+  
+  <!-- Google Fonts & Identity Services & Socket.IO -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --bg-card: rgba(15, 23, 42, 0.65);
+      --bg-card-hover: rgba(30, 41, 59, 0.8);
+      --primary: #00f2fe;
+      --primary-blue: #4facfe;
+      --accent-purple: #8a2be2;
+      --accent-pink: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(0, 242, 254, 0.18);
+      --border-hover: rgba(0, 242, 254, 0.4);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 10px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg-dark: #f0f4f9;
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --bg-card-hover: rgba(241, 245, 249, 1);
+      --primary: #0284c7;
+      --primary-blue: #2563eb;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: rgba(2, 132, 199, 0.2);
+      --border-hover: rgba(2, 132, 199, 0.5);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 242, 254, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(138, 43, 226, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Common Utility Styles */
+    .hidden { display: none !important; }
+    .glass {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--glass-shadow);
+    }
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-blue));
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0, 242, 254, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 242, 254, 0.5);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--border-hover);
+    }
+    .input-field {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 15px;
+      outline: none;
+      transition: var(--transition);
+    }
+    .input-field:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+    }
+
+    /* Toast Notification */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.9);
+      border-left: 4px solid var(--primary);
+      color: var(--text-main);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideInRight 0.3s ease;
+      max-width: 350px;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-dark);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .dolphin-anim {
+      font-size: 80px;
+      animation: dolphinSwim 2s infinite ease-in-out;
+    }
+    @keyframes dolphinSwim {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(-10deg); }
+    }
+    .brand-title {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+
+    /* Auth Screen */
+    #auth-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9000;
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      padding: 40px;
+      border-radius: var(--radius-lg);
+      text-align: center;
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 25px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: var(--radius-md);
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .auth-tab.active {
+      background: var(--primary);
+      color: #000;
+    }
+    .auth-form { display: flex; flex-direction: column; gap: 16px; }
+    .social-btns {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .otp-inputs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    .otp-field {
+      width: 45px;
+      height: 55px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--primary);
+    }
+
+    /* Main App Layout */
+    #app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+      z-index: 10;
+    }
+    .sidebar-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .user-profile-summary {
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary);
+      position: relative;
+    }
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      border: 2px solid var(--bg-dark);
+    }
+    .status-dot.online { background: #10b981; }
+    .status-dot.offline { background: #64748b; }
+
+    .nav-menu {
+      display: flex;
+      padding: 10px 20px;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .nav-item {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: var(--transition);
+    }
+    .nav-item.active {
+      background: rgba(0, 242, 254, 0.15);
+      color: var(--primary);
+    }
+
+    .list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 4px;
+    }
+    .list-item:hover, .list-item.active {
+      background: var(--bg-card-hover);
+    }
+
+    /* Main Chat View */
+    .chat-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+    .chat-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .msg-bubble {
+      max-width: 65%;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      line-height: 1.4;
+      word-break: break-word;
+      position: relative;
+    }
+    .msg-bubble.sent {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--primary), var(--primary-blue));
+      color: #000;
+      border-bottom-right-radius: 4px;
+      font-weight: 500;
+    }
+    .msg-bubble.received {
+      align-self: flex-start;
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+    .msg-time {
+      font-size: 10px;
+      margin-top: 4px;
+      opacity: 0.7;
+      text-align: right;
+    }
+
+    .chat-input-area {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-top: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    /* Emoji Picker Panel */
+    #emoji-picker {
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      width: 280px;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      font-size: 20px;
+      z-index: 100;
+    }
+    .emoji-item {
+      cursor: pointer;
+      text-align: center;
+      padding: 4px;
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+    .emoji-item:hover { background: rgba(255, 255, 255, 0.1); }
+
+    /* Profile View Overlay */
+    .profile-view {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .cover-card {
+      width: 100%;
+      max-width: 700px;
+      height: 200px;
+      border-radius: var(--radius-lg);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      border: 1px solid var(--border-color);
+    }
+    .profile-avatar-large {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 4px solid var(--bg-dark);
+      position: absolute;
+      bottom: -40px;
+      left: 40px;
+      object-fit: cover;
+    }
+
+    /* Settings View */
+    .settings-view {
+      flex: 1;
+      padding: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Bottom Nav for Mobile */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      border-top: 1px solid var(--border-color);
+      z-index: 99;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    /* Empty States */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: 12px;
+      text-align: center;
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        display: flex;
+      }
+      .sidebar.mobile-hidden { display: none; }
+      .chat-view {
+        width: 100%;
+        display: flex;
+      }
+      .chat-view.mobile-hidden { display: none; }
+      .mobile-nav { display: flex; }
+      .auth-card { padding: 25px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container"></div>
+
+  <!-- Fullscreen Loading Screen -->
+  <div id="loading-screen">
+    <div class="dolphin-anim">🐬</div>
+    <div class="brand-title">KAISOUL CHAT</div>
+    <div style="color: var(--text-muted); font-size: 14px;">Đang khởi động không gian Gen Z...</div>
+  </div>
+
+  <!-- Offline Warning Banner -->
+  <div id="offline-banner" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; background: var(--accent-pink); color: #fff; text-align: center; padding: 8px; z-index: 10001; font-weight: 700;">
+    ⚠️ Không thể kết nối KAISOUL CHAT. <button onclick="checkAuthSession()" style="background: #fff; border: none; padding: 2px 10px; border-radius: 4px; cursor: pointer;">Thử lại</button>
+  </div>
+
+  <!-- Authentication Screen -->
+  <div id="auth-screen" class="hidden">
+    <div class="auth-card glass">
+      <div style="font-size: 48px; margin-bottom: 8px;">🐬</div>
+      <div class="brand-title" style="font-size: 26px; margin-bottom: 20px;">KAISOUL CHAT</div>
+
+      <!-- Login / Register Tabs -->
+      <div class="auth-tabs" id="auth-tab-bar">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">ĐĂNG NHẬP</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">ĐĂNG KÝ</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <input type="email" id="login-email" class="input-field" placeholder="Email của bạn" required>
+        <input type="password" id="login-password" class="input-field" placeholder="Mật khẩu" required>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng nhập</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+        <input type="text" id="reg-name" class="input-field" placeholder="Tên hiển thị" required>
+        <input type="email" id="reg-email" class="input-field" placeholder="Email" required>
+        <input type="password" id="reg-pass" class="input-field" placeholder="Mật khẩu (Tối thiểu 10 ký tự, Chữ hoa, Thường, Số, Ký tự đặc biệt)" required>
+        <input type="password" id="reg-confirm" class="input-field" placeholder="Nhập lại mật khẩu" required>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Tạo tài khoản</button>
+      </form>
+
+      <!-- OTP Verification Form -->
+      <div id="otp-section" class="auth-form hidden">
+        <div style="font-size: 14px; color: var(--text-muted);">Mã OTP 6 số đã được gửi tới email của bạn.</div>
+        <div class="otp-inputs">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 0)">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 1)">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 2)">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 3)">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 4)">
+          <input type="text" maxlength="1" class="otp-field" oninput="focusNextOtp(this, 5)">
+        </div>
+        <button onclick="handleVerifyOTP()" class="btn btn-primary" style="width: 100%;">Xác minh OTP</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+          <span id="otp-timer" style="font-size: 13px; color: var(--primary);">10:00</span>
+          <button onclick="handleResendOTP()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Gửi lại mã</button>
+        </div>
+      </div>
+
+      <!-- Social Logins -->
+      <div class="social-btns" id="social-login-container">
+        <div style="display: flex; align-items: center; margin: 15px 0; color: var(--text-muted); font-size: 12px;">
+          <div style="flex:1; height:1px; background:var(--border-color)"></div>
+          <span style="padding: 0 10px;">HOẶC</span>
+          <div style="flex:1; height:1px; background:var(--border-color)"></div>
+        </div>
+        <div id="g_id_onload"></div>
+        <div id="google-btn-wrapper" style="display: flex; justify-content: center;"></div>
+        <button onclick="handleFacebookLogin()" class="btn btn-secondary" style="width: 100%;">
+          <span style="color: #1877f2; font-weight: 800;">f</span> Tiếp tục với Facebook
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Container -->
+  <div id="app-container" class="hidden">
+
+    <!-- Left Sidebar -->
+    <div class="sidebar glass" id="sidebar-panel">
+      <div class="sidebar-header">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; color: var(--primary);">
+          <span>🐬</span> KAISOUL
+        </div>
+        <button onclick="openView('settings')" class="btn btn-secondary" style="padding: 8px;">⚙️</button>
+      </div>
+
+      <!-- Logged User Info Bar -->
+      <div class="user-profile-summary">
+        <div style="position: relative;">
+          <img id="my-avatar" src="https://via.placeholder.com/150" class="avatar" alt="Avatar">
+          <div class="status-dot online"></div>
+        </div>
+        <div style="flex: 1; overflow: hidden;">
+          <div id="my-display-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">User</div>
+          <div id="my-username" style="font-size: 12px; color: var(--text-muted);">@username</div>
+        </div>
+      </div>
+
+      <!-- Sidebar Navigation Tabs -->
+      <div class="nav-menu">
+        <div class="nav-item active" onclick="switchSidebarTab('friends')">💬 Chat</div>
+        <div class="nav-item" onclick="switchSidebarTab('search')">🔎 Tìm kiếm</div>
+      </div>
+
+      <!-- Dynamic List Item Container -->
+      <div class="list-container" id="sidebar-list">
+        <!-- Friends / Search results render here -->
+      </div>
+    </div>
+
+    <!-- Main Content Chat View -->
+    <div class="chat-view glass mobile-hidden" id="chat-panel">
+      <!-- Chat Header -->
+      <div class="chat-header" id="chat-header-bar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button onclick="backToSidebarMobile()" class="btn btn-secondary" style="padding: 6px 10px; display: none;" id="mobile-back-btn">←</button>
+          <div style="position: relative;">
+            <img id="active-chat-avatar" src="https://via.placeholder.com/150" class="avatar" alt="Friend Avatar">
+            <div id="active-chat-status-dot" class="status-dot offline"></div>
+          </div>
+          <div>
+            <div id="active-chat-name" style="font-weight: 700;">Chọn bạn bè để chat</div>
+            <div id="active-chat-status-text" style="font-size: 12px; color: var(--text-muted);">● Offline</div>
+          </div>
+        </div>
+        <div>
+          <button onclick="openProfileView()" class="btn btn-secondary" style="padding: 8px 12px;">👤 Profile</button>
+        </div>
+      </div>
+
+      <!-- Messages Body Scroll Area -->
+      <div class="messages-container" id="messages-list">
+        <div class="empty-state">
+          <div style="font-size: 48px;">🐬</div>
+          <div>Chọn một người để bắt đầu trò chuyện</div>
+        </div>
+      </div>
+
+      <!-- Emoji Picker Float Panel -->
+      <div id="emoji-picker" class="glass hidden">
+        <span class="emoji-item" onclick="insertEmoji('😀')">😀</span>
+        <span class="emoji-item" onclick="insertEmoji('😄')">😄</span>
+        <span class="emoji-item" onclick="insertEmoji('😆')">😆</span>
+        <span class="emoji-item" onclick="insertEmoji('😅')">😅</span>
+        <span class="emoji-item" onclick="insertEmoji('😂')">😂</span>
+        <span class="emoji-item" onclick="insertEmoji('🤣')">🤣</span>
+        <span class="emoji-item" onclick="insertEmoji('😊')">😊</span>
+        <span class="emoji-item" onclick="insertEmoji('😍')">😍</span>
+        <span class="emoji-item" onclick="insertEmoji('🥰')">🥰</span>
+        <span class="emoji-item" onclick="insertEmoji('😎')">😎</span>
+        <span class="emoji-item" onclick="insertEmoji('🤩')">🤩</span>
+        <span class="emoji-item" onclick="insertEmoji('😭')">😭</span>
+        <span class="emoji-item" onclick="insertEmoji('❤️')">❤️</span>
+        <span class="emoji-item" onclick="insertEmoji('🔥')">🔥</span>
+        <span class="emoji-item" onclick="insertEmoji('✨')">✨</span>
+        <span class="emoji-item" onclick="insertEmoji('👍')">👍</span>
+        <span class="emoji-item" onclick="insertEmoji('🐬')">🐬</span>
+        <span class="emoji-item" onclick="insertEmoji('🎉')">🎉</span>
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="chat-input-area glass">
+        <button onclick="toggleEmojiPicker()" class="btn btn-secondary" style="padding: 10px;">😊</button>
+        <button onclick="showToast('Chức năng đính kèm file tạm thời chưa khả dụng', 'info')" class="btn btn-secondary" style="padding: 10px;">📎</button>
+        <input type="text" id="chat-message-input" class="input-field" placeholder="Nhập tin nhắn..." onkeypress="handleKeyPressSend(event)">
+        <button onclick="sendChatMessage()" class="btn btn-primary" style="padding: 12px 20px;">➤</button>
+      </div>
+    </div>
+
+    <!-- User Profile View Overlay -->
+    <div class="profile-view glass hidden" id="profile-panel">
+      <div style="width: 100%; max-width: 700px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Trang cá nhân</h2>
+        <button onclick="closeProfileView()" class="btn btn-secondary">✕ Đóng</button>
+      </div>
+
+      <div class="cover-card" id="profile-cover-display" style="background-image: url('https://via.placeholder.com/800x200');">
+        <img id="profile-avatar-display" src="https://via.placeholder.com/150" class="profile-avatar-large" alt="Avatar">
+      </div>
+
+      <div style="width: 100%; max-width: 700px; margin-top: 50px; display: flex; flex-direction: column; gap: 15px;">
+        <div>
+          <h1 id="profile-name-display" style="font-size: 24px;">Tên hiển thị</h1>
+          <div id="profile-username-display" style="color: var(--text-muted);">@username</div>
+        </div>
+
+        <div id="profile-bio-display" style="padding: 15px; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
+          Bio hiển thị ở đây
+        </div>
+
+        <div style="font-weight: 700;">👥 Bạn bè: <span id="profile-friend-count" style="color: var(--primary);">0</span> người</div>
+
+        <hr style="border-color: var(--border-color); margin: 10px 0;">
+
+        <h3>Thay đổi ảnh bìa</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input type="file" id="cover-file-input" accept="image/*" class="hidden" onchange="uploadCoverFile(event)">
+          <button onclick="document.getElementById('cover-file-input').click()" class="btn btn-secondary">📁 Tải ảnh từ máy</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <input type="text" id="cover-url-input" class="input-field" placeholder="Hoặc nhập URL hình ảnh bìa...">
+          <button onclick="uploadCoverUrl()" class="btn btn-primary">Lưu URL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings View Overlay -->
+    <div class="settings-view glass hidden" id="settings-panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Cài đặt ứng dụng</h2>
+        <button onclick="closeSettingsView()" class="btn btn-secondary">✕ Đóng</button>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div style="font-weight: 700;">Giao diện sáng / tối</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Chuyển đổi giữa Dark Mode và Light Mode</div>
+        </div>
+        <button onclick="toggleTheme()" class="btn btn-secondary">🎨 Đổi Theme</button>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div style="font-weight: 700;">Đăng xuất khỏi thiết bị</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Xóa phiên làm việc hiện tại</div>
+        </div>
+        <button onclick="handleLogout()" class="btn btn-primary" style="background: var(--accent-pink); color: #fff;">🚪 Đăng xuất</button>
+      </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav glass">
+      <div onclick="mobileNavSwitch('chats')" style="text-align: center; font-size: 20px;">💬</div>
+      <div onclick="mobileNavSwitch('friends')" style="text-align: center; font-size: 20px;">👥</div>
+      <div onclick="openProfileView()" style="text-align: center; font-size: 20px;">👤</div>
+      <div onclick="openView('settings')" style="text-align: center; font-size: 20px;">⚙️</div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // GLOBAL APP STATE
+    // ==========================================
+    let currentUser = null;
+    let activeFriend = null;
+    let socket = null;
+    let otpTimerInterval = null;
+    let onlineUsersSet = new Set();
+
+    // ==========================================
+    // INITIALIZATION & AUTH CHECK
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Load Theme Preference
+      const savedTheme = localStorage.getItem('kaisoul_theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+
+      // Initialize System Setup & Config
+      fetchConfig();
+      setTimeout(() => {
+        checkAuthSession();
+      }, 1200);
+    });
+
+    // Helper Toast Generator
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>🐬</span> <div>${message}</div>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Fetch Global App Configuration
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/config', { credentials: 'include' });
+        const config = await res.json();
+        if (config.googleClientId) {
+          initGoogleIdentity(config.googleClientId);
+        }
+      } catch (err) {
+        console.warn('Lỗi lấy config hệ thống:', err);
+      }
+    }
+
+    // Initialize Google Identity Services
+    function initGoogleIdentity(clientId) {
+      if (typeof google !== 'undefined' && google.accounts) {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('google-btn-wrapper'),
+          { theme: 'outline', size: 'large', width: '320' }
+        );
+      }
+    }
+
+    // Check Current Auth Session
+    async function checkAuthSession() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const data = await res.json();
+
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('offline-banner').classList.add('hidden');
+
+        if (data.success && data.user) {
+          currentUser = data.user;
+          setupAuthenticatedUI();
+        } else {
+          showAuthScreen();
+        }
+      } catch (err) {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('offline-banner').classList.remove('hidden');
+      }
+    }
+
+    function showAuthScreen() {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app-container').classList.add('hidden');
+    }
+
+    function setupAuthenticatedUI() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-container').classList.remove('hidden');
+
+      // Populate User Summary
+      document.getElementById('my-display-name').innerText = currentUser.display_name;
+      document.getElementById('my-username').innerText = `@${currentUser.username}`;
+      document.getElementById('my-avatar').src = currentUser.avatar_url || 'https://via.placeholder.com/150';
+
+      // Connect Socket.IO Engine
+      initSocketConnection();
+
+      // Load Default List
+      loadFriendsList();
+    }
+
+    // ==========================================
+    // AUTHENTICATION LOGIC
+    // ==========================================
+    function switchAuthTab(tab) {
+      const tabs = document.querySelectorAll('.auth-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+
+      if (tab === 'login') {
+        tabs[0].classList.add('active');
+        document.getElementById('login-form').classList.remove('hidden');
+        document.getElementById('register-form').classList.add('hidden');
+        document.getElementById('otp-section').classList.add('hidden');
+        document.getElementById('social-login-container').classList.remove('hidden');
+      } else {
+        tabs[1].classList.add('active');
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('register-form').classList.remove('hidden');
+        document.getElementById('otp-section').classList.add('hidden');
+        document.getElementById('social-login-container').classList.remove('hidden');
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showToast('Đăng nhập thành công!');
+          setupAuthenticatedUI();
+        } else if (data.unverified) {
+          showToast('Tài khoản chưa xác minh OTP. Vui lòng kiểm tra email!');
+          startOtpFlow(email);
+        } else {
+          showToast(data.message || 'Đăng nhập thất bại.');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối máy chủ.');
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const displayName = document.getElementById('reg-name').value;
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-pass').value;
+      const confirmPassword = document.getElementById('reg-confirm').value;
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ displayName, email, password, confirmPassword })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Đăng ký thành công! Vui lòng nhập mã OTP.');
+          startOtpFlow(email);
+        } else {
+          showToast(data.message || 'Đăng ký thất bại.');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối máy chủ.');
+      }
+    }
+
+    function startOtpFlow(email) {
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('social-login-container').classList.add('hidden');
+      document.getElementById('otp-section').classList.remove('hidden');
+      document.getElementById('otp-section').setAttribute('data-email', email);
+
+      startOtpTimer();
+    }
+
+    function focusNextOtp(elem, idx) {
+      if (elem.value.length === 1 && idx < 5) {
+        document.querySelectorAll('.otp-field')[idx + 1].focus();
+      }
+    }
+
+    function startOtpTimer() {
+      let duration = 600; // 10 mins
+      const display = document.getElementById('otp-timer');
+      clearInterval(otpTimerInterval);
+
+      otpTimerInterval = setInterval(() => {
+        const mins = Math.floor(duration / 60);
+        const secs = duration % 60;
+        display.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        if (--duration < 0) {
+          clearInterval(otpTimerInterval);
+          display.innerText = 'Hết hạn';
+        }
+      }, 1000);
+    }
+
+    async function handleVerifyOTP() {
+      const email = document.getElementById('otp-section').getAttribute('data-email');
+      const fields = document.querySelectorAll('.otp-field');
+      let code = '';
+      fields.forEach(f => code += f.value);
+
+      if (code.length !== 6) {
+        showToast('Vui lòng nhập đủ 6 số OTP.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Xác minh OTP thành công!');
+          currentUser = data.user;
+          setupAuthenticatedUI();
+        } else {
+          showToast(data.message || 'Xác minh OTP thất bại.');
+        }
+      } catch (err) {
+        showToast('Lỗi hệ thống.');
+      }
+    }
+
+    async function handleResendOTP() {
+      const email = document.getElementById('otp-section').getAttribute('data-email');
+      try {
+        const res = await fetch('/api/auth/resend-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        showToast(data.message);
+        if (data.success) startOtpTimer();
+      } catch (err) {
+        showToast('Lỗi gửi lại OTP.');
+      }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showToast('Đăng nhập Google thành công!');
+          setupAuthenticatedUI();
+        } else {
+          showToast(data.message || 'Lỗi xác thực Google.');
+        }
+      } catch (err) {
+        showToast('Lỗi xử lý Google Auth.');
+      }
+    }
+
+    async function handleFacebookLogin() {
+      try {
+        const res = await fetch('/api/auth/facebook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        showToast(data.message || 'Facebook Auth chưa được hỗ trợ.');
+      } catch (err) {
+        showToast('Lỗi kết nối Facebook Auth.');
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        if (socket) socket.disconnect();
+        currentUser = null;
+        activeFriend = null;
+        closeSettingsView();
+        showToast('Đã đăng xuất.');
+        showAuthScreen();
+      } catch (err) {
+        showToast('Lỗi đăng xuất.');
+      }
+    }
+
+    // ==========================================
+    // SIDEBAR & FRIENDS LOGIC
+    // ==========================================
+    function switchSidebarTab(tab) {
+      const navs = document.querySelectorAll('.nav-menu .nav-item');
+      navs.forEach(n => n.classList.remove('active'));
+
+      if (tab === 'friends') {
+        navs[0].classList.add('active');
+        loadFriendsList();
+      } else {
+        navs[1].classList.add('active');
+        renderSearchUI();
+      }
+    }
+
+    async function loadFriendsList() {
+      const container = document.getElementById('sidebar-list');
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Đang tải...</div>';
+
+      try {
+        const res = await fetch('/api/friends', { credentials: 'include' });
+        const data = await res.json();
+
+        if (data.success && data.friends.length > 0) {
+          container.innerHTML = '';
+          data.friends.forEach(friend => {
+            const isOnline = onlineUsersSet.has(friend.id);
+            const item = document.createElement('div');
+            item.className = `list-item ${activeFriend && activeFriend.id === friend.id ? 'active' : ''}`;
+            item.onclick = () => selectFriendToChat(friend);
+            item.innerHTML = `
+              <div style="position:relative;">
+                <img src="${friend.avatar_url || 'https://via.placeholder.com/150'}" class="avatar" alt="Avatar">
+                <div class="status-dot ${isOnline ? 'online' : 'offline'}"></div>
+              </div>
+              <div style="flex:1; overflow:hidden;">
+                <div style="font-weight:700;">${friend.display_name}</div>
+                <div style="font-size:12px; color:var(--text-muted);">@${friend.username}</div>
+              </div>
+            `;
+            container.appendChild(item);
+          });
+        } else {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div style="font-size:32px;">👥</div>
+              <div>Bạn chưa có bạn bè</div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        container.innerHTML = '<div style="text-align:center; color:red; padding:20px;">Lỗi tải danh sách</div>';
+      }
+    }
+
+    function renderSearchUI() {
+      const container = document.getElementById('sidebar-list');
+      container.innerHTML = `
+        <div style="padding: 10px 0;">
+          <input type="text" id="search-user-input" class="input-field" placeholder="Tìm tên, username hoặc email..." oninput="executeSearchUser(this.value)">
+        </div>
+        <div id="search-results-box">
+          <div class="empty-state"><div style="font-size:28px;">🔎</div><div>Nhập từ khóa để tìm người dùng</div></div>
+        </div>
+      `;
+    }
+
+    let searchTimeout = null;
+    function executeSearchUser(val) {
+      clearTimeout(searchTimeout);
+      const query = val.trim();
+      if (!query) return;
+
+      searchTimeout = setTimeout(async () => {
+        const box = document.getElementById('search-results-box');
+        try {
+          const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+          const data = await res.json();
+
+          if (data.success && data.users.length > 0) {
+            box.innerHTML = '';
+            data.users.forEach(u => {
+              const item = document.createElement('div');
+              item.className = 'list-item';
+              item.onclick = () => selectFriendToChat(u);
+              item.innerHTML = `
+                <img src="${u.avatar_url || 'https://via.placeholder.com/150'}" class="avatar" alt="Avatar">
+                <div style="flex:1; overflow:hidden;">
+                  <div style="font-weight:700;">${u.display_name}</div>
+                  <div style="font-size:12px; color:var(--text-muted);">@${u.username}</div>
+                </div>
+              `;
+              box.appendChild(item);
+            });
+          } else {
+            box.innerHTML = `<div class="empty-state"><div style="font-size:28px;">🔎</div><div>Không tìm thấy người dùng</div></div>`;
+          }
+        } catch (err) {
+          box.innerHTML = `<div style="text-align:center; color:red;">Lỗi tìm kiếm</div>`;
+        }
+      }, 300);
+    }
+
+    // ==========================================
+    // CHAT & REALTIME SOCKET.IO
+    // ==========================================
+    function initSocketConnection() {
+      if (socket) socket.disconnect();
+
+      socket = io({ credentials: 'include' });
+
+      socket.on('connect', () => {
+        console.log('Socket Realtime đã kết nối.');
+      });
+
+      socket.on('user_status', (data) => {
+        if (data.status === 'online') {
+          onlineUsersSet.add(data.userId);
+        } else {
+          onlineUsersSet.delete(data.userId);
+        }
+        updateActiveFriendStatusUI();
+      });
+
+      socket.on('message_sent', (msg) => {
+        if (activeFriend && (msg.receiver_id === activeFriend.id || msg.sender_id === activeFriend.id)) {
+          appendMessageToUI(msg, 'sent');
+        }
+      });
+
+      socket.on('receive_message', (msg) => {
+        if (activeFriend && msg.sender_id === activeFriend.id) {
+          appendMessageToUI(msg, 'received');
+        } else {
+          showToast(`💬 Tin nhắn mới từ bạn bè!`);
+        }
+      });
+    }
+
+    async function selectFriendToChat(friend) {
+      activeFriend = friend;
+
+      // Responsive Mobile View Switch
+      document.getElementById('sidebar-panel').classList.add('mobile-hidden');
+      document.getElementById('chat-panel').classList.remove('mobile-hidden');
+      document.getElementById('mobile-back-btn').style.display = 'block';
+
+      // Header UI Update
+      document.getElementById('active-chat-name').innerText = friend.display_name;
+      document.getElementById('active-chat-avatar').src = friend.avatar_url || 'https://via.placeholder.com/150';
+      updateActiveFriendStatusUI();
+
+      // Load History Messages
+      loadChatHistory(friend.id);
+    }
+
+    function updateActiveFriendStatusUI() {
+      if (!activeFriend) return;
+      const isOnline = onlineUsersSet.has(activeFriend.id);
+      const dot = document.getElementById('active-chat-status-dot');
+      const text = document.getElementById('active-chat-status-text');
+
+      if (isOnline) {
+        dot.className = 'status-dot online';
+        text.innerText = '● Online';
+        text.style.color = '#10b981';
+      } else {
+        dot.className = 'status-dot offline';
+        text.innerText = '○ Offline';
+        text.style.color = 'var(--text-muted)';
+      }
+    }
+
+    async function loadChatHistory(friendId) {
+      const container = document.getElementById('messages-list');
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Đang tải tin nhắn...</div>';
+
+      try {
+        const res = await fetch(`/api/messages/${friendId}`, { credentials: 'include' });
+        const data = await res.json();
+
+        if (data.success) {
+          container.innerHTML = '';
+          if (data.messages.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div style="font-size:32px;">💬</div><div>Hãy bắt đầu trò chuyện ngay!</div></div>`;
+          } else {
+            data.messages.forEach(msg => {
+              const type = msg.sender_id === currentUser.id ? 'sent' : 'received';
+              appendMessageToUI(msg, type);
+            });
+          }
+        }
+      } catch (err) {
+        container.innerHTML = '<div style="text-align:center; color:red;">Lỗi tải tin nhắn.</div>';
+      }
+    }
+
+    function appendMessageToUI(msg, type) {
+      const container = document.getElementById('messages-list');
+      
+      // Clean empty state if present
+      if (container.querySelector('.empty-state')) {
+        container.innerHTML = '';
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble ${type}`;
+      
+      const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      bubble.innerHTML = `
+        <div>${escapeHtml(msg.content)}</div>
+        <div class="msg-time">${timeStr}</div>
+      `;
+
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendChatMessage() {
+      if (!activeFriend) {
+        showToast('Vui lòng chọn người trò chuyện.');
+        return;
+      }
+
+      const input = document.getElementById('chat-message-input');
+      const content = input.value.trim();
+
+      if (!content) return;
+
+      socket.emit('send_message', {
+        receiverId: activeFriend.id,
+        content: content
+      });
+
+      input.value = '';
+      document.getElementById('emoji-picker').classList.add('hidden');
+    }
+
+    function handleKeyPressSend(e) {
+      if (e.key === 'Enter') sendChatMessage();
+    }
+
+    function backToSidebarMobile() {
+      document.getElementById('sidebar-panel').classList.remove('mobile-hidden');
+      document.getElementById('chat-panel').classList.add('mobile-hidden');
+    }
+
+    // ==========================================
+    // EMOJI PICKER LOGIC
+    // ==========================================
+    function toggleEmojiPicker() {
+      document.getElementById('emoji-picker').classList.toggle('hidden');
+    }
+
+    function insertEmoji(emoji) {
+      const input = document.getElementById('chat-message-input');
+      input.value += emoji;
+      input.focus();
+    }
+
+    // ==========================================
+    // PROFILE MANAGEMENT
+    // ==========================================
+    async function openProfileView() {
+      try {
+        const res = await fetch('/api/users/profile', { credentials: 'include' });
+        const data = await res.json();
+
+        if (data.success && data.user) {
+          const u = data.user;
+          document.getElementById('profile-name-display').innerText = u.display_name;
+          document.getElementById('profile-username-display').innerText = `@${u.username}`;
+          document.getElementById('profile-bio-display').innerText = u.bio || 'Tự do, sáng tạo và kết nối.';
+          document.getElementById('profile-friend-count').innerText = u.friend_count || 0;
+          document.getElementById('profile-avatar-display').src = u.avatar_url || 'https://via.placeholder.com/150';
+          
+          if (u.cover_url) {
+            document.getElementById('profile-cover-display').style.backgroundImage = `url('${u.cover_url}')`;
+          }
+
+          document.getElementById('profile-panel').classList.remove('hidden');
+        }
+      } catch (err) {
+        showToast('Lỗi tải hồ sơ cá nhân.');
+      }
+    }
+
+    function closeProfileView() {
+      document.getElementById('profile-panel').classList.add('hidden');
+    }
+
+    async function uploadCoverFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('cover', file);
+
+      try {
+        const res = await fetch('/api/users/cover', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Cập nhật ảnh bìa thành công!');
+          document.getElementById('profile-cover-display').style.backgroundImage = `url('${data.cover_url}')`;
+        } else {
+          showToast(data.message || 'Lỗi cập nhật ảnh bìa.');
+        }
+      } catch (err) {
+        showToast('Lỗi tải tệp ảnh bìa.');
+      }
+    }
+
+    async function uploadCoverUrl() {
+      const coverUrl = document.getElementById('cover-url-input').value.trim();
+      if (!coverUrl) return;
+
+      try {
+        const res = await fetch('/api/users/cover-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ coverUrl })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Cập nhật URL ảnh bìa thành công!');
+          document.getElementById('profile-cover-display').style.backgroundImage = `url('${data.cover_url}')`;
+          document.getElementById('cover-url-input').value = '';
+        } else {
+          showToast(data.message || 'Lỗi cập nhật.');
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối.');
+      }
+    }
+
+    // ==========================================
+    // SETTINGS & THEMES
+    // ==========================================
+    function openView(view) {
+      if (view === 'settings') {
+        document.getElementById('settings-panel').classList.remove('hidden');
+      }
+    }
+
+    function closeSettingsView() {
+      document.getElementById('settings-panel').classList.add('hidden');
+    }
+
+    function toggleTheme() {
+      const current = document.body.getAttribute('data-theme');
+      const target = current === 'light' ? 'dark' : 'light';
+      document.body.setAttribute('data-theme', target);
+      localStorage.setItem('kaisoul_theme', target);
+      showToast(`Đã đổi sang giao diện ${target.toUpperCase()}`);
+    }
+
+    function mobileNavSwitch(target) {
+      if (target === 'chats') {
+        switchSidebarTab('friends');
+        backToSidebarMobile();
+      } else if (target === 'friends') {
+        switchSidebarTab('friends');
+        backToSidebarMobile();
+      }
+    }
+
+    // Helper: HTML Sanitize
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
